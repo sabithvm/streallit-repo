@@ -2,5 +2,6 @@ plotly
 streamlit
 pandas  
 altair
+sqlalchemy
 streamlit_dynamic_filters
 
