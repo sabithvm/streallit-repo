@@ -14,16 +14,16 @@ import psycopg2
 import plotly.express as px
 import matplotlib.pyplot as plt
 from streamlit_dynamic_filters import DynamicFilters
+import os
 
-# Function to get summary of the data
-def get_summary(df):
-    summary = {
-        'Total Resources': df['arn'].nunique(),
-        'Unique Resource Types': df['_cq_table'].nunique(),
-        'Latest Sync Time': df['_cq_sync_time'].max(),
-        'Top 5 Resource Types': df['_cq_table'].value_counts().head().to_dict()
-    }
-    return summary  
+# Database connection parameters
+DB_HOST = os.environ['DB_HOST']
+DB_NAME = os.environ['DB_NAME']
+DB_USER = os.environ['DB_USER']
+DB_PASS = os.environ['DB_PASS']
+DB_PORT = os.environ['DB_PORT']
+
+
 
 #Put your logo here:
 logo = Image.open('resources/logo.jpg')
@@ -42,7 +42,7 @@ chartRow = st.container()
 footer = st.container()
 
 
-connection_string = f'postgresql+psycopg2://postgres:8yPhb9N2ujAw6wQZT95E@recuperer.cluster-cr0s6i646p8u.us-east-1.rds.amazonaws.com:5432/recupererdb'
+connection_string = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 engine = create_engine(connection_string)
 
 infra_query = "SELECT * FROM aws_resources WHERE _cq_sync_time = (SELECT MAX(_cq_sync_time) FROM aws_resources) AND _cq_table LIKE 'aws_ec2_%%' and account_id not like 'aws%%' and region not like 'unavai%%'" 
