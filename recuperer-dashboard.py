@@ -39,7 +39,7 @@ footer = st.container()
 connection_string = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 infra_query = "SELECT * FROM aws_resources WHERE _cq_sync_time = (SELECT MAX(_cq_sync_time) FROM aws_resources) AND _cq_table LIKE 'aws_ec2_%%' and account_id not like 'aws%%' and region not like 'unavai%%'" 
 backup_query = "SELECT * FROM aws_resource_backup_status"
-
+engine = create_engine(connection_string)
 df = pd.read_sql(infra_query, engine)
 backup_df = pd.read_sql(backup_query, engine)
 dynamic_filters = DynamicFilters(df=backup_df, filters=['region', 'account_id', 'arn', '_cq_table'])
