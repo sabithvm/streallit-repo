@@ -5,4 +5,4 @@ altair
 sqlalchemy
 streamlit_dynamic_filters
 psycopg2
-
+psycopg2-binary
