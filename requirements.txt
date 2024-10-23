@@ -1,0 +1,9 @@
+plotly
+streamlit
+pandas 
+sqlalchemy 
+altair
+PIL
+psycopg2
+streamlit_dynamic_filters
+
