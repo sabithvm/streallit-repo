@@ -1,9 +1,7 @@
 plotly
 streamlit
-pandas 
-sqlalchemy 
+pandas  
 altair
 PIL
-psycopg2
 streamlit_dynamic_filters
 
