@@ -2,7 +2,6 @@ plotly
 streamlit
 pandas  
 altair
-sqlalchemy
 streamlit_dynamic_filters
-psycopg2
 psycopg2-binary
+sqlalchemy
