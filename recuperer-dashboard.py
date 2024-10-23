@@ -1,18 +1,10 @@
 import plotly.express as px
 import streamlit as st
 import pandas as pd
-import sqlalchemy as sa
-from sqlalchemy import create_engine
-from sqlalchemy.engine import URL
-from urllib.parse import quote_plus
 import altair as alt
-import plotly.express as px
 from datetime import datetime
 from datetime import date
 from PIL import Image
-import psycopg2
-import plotly.express as px
-import matplotlib.pyplot as plt
 from streamlit_dynamic_filters import DynamicFilters
 import os
 
