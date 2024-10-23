@@ -2,6 +2,5 @@ plotly
 streamlit
 pandas  
 altair
-PIL
 streamlit_dynamic_filters
 
