@@ -40,11 +40,8 @@ def camel_case(s):
 
 def row_to_json_with_id(row):
     """Convert a DataFrame row to a JSON object with CamelCase keys, embedded in a root object with a unique ID."""
-    # Convert the row to a dictionary
-    row_dict = row.to_dict()
-    
-    # Create a new dictionary with camelCase keys
-    camel_dict = {camel_case(key): value for key, value in row_dict.items()}
+    camel_dict = {camel_case(key): value.iloc[0] if isinstance(value, pd.Series) else value 
+                  for key, value in row.items() if key != 'index'}
     
     # Create the root object with a unique ID and embed the camel_dict
     root_object = {
@@ -74,7 +71,7 @@ def display_lineage_data_frame(lineage_df):
         )
 
         selected_row = grid_response['selected_rows']
-        if not(selected_row is None):    
+        if not(selected_row is None):
             # Create a button to call the API
             if st.button('Migrate', key='api_button'):            
                 try:
