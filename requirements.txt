@@ -5,3 +5,4 @@ altair
 streamlit_dynamic_filters
 psycopg2-binary
 sqlalchemy
+streamlit-aggrid
