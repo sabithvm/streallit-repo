@@ -178,11 +178,9 @@ with midRow:
         allow_unsafe_jscode=True,
         theme='streamlit'
     )
-
-    selected_row = grid_response['selected_rows']
-    st.write(selected_row)
-    
-    if not(selected_row is None) and len(selected_row)>0:
+    if not(grid_response['selected_rows'] is None):
+        selected_row = grid_response['selected_rows']
+        st.write(selected_row)
         resource_arn = selected_row['arn']
         st.session_state.resource_arn = resource_arn
         st.switch_page("pages/recuperer-lineage.py")         
