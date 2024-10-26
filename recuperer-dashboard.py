@@ -37,75 +37,11 @@ if not QUERY_API_ENDPOINT:
     st.error("QUERY_API_ENDPOINT environment variable is not set.")
     st.stop()
 
-def display_lineage_data_frame(lineage_df):
-    with chartRow:
-
-        st.header("Recoverypoint Lineage")    
-        gb = GridOptionsBuilder.from_dataframe(lineage_df)
-        gb.configure_selection('single', use_checkbox=True, pre_selected_rows=[])
-        gb.configure_default_column(resizable=True, filterable=True, sorteable=True)
-        grid_options = gb.build()
-
-        grid_response = AgGrid(
-            lineage_df,
-            gridOptions=grid_options,
-            update_mode=GridUpdateMode.SELECTION_CHANGED,
-            columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
-            fit_columns_on_grid_load=True,
-            allow_unsafe_jscode=True,
-            theme='streamlit'
-        )
-
-        selected_row = grid_response['selected_rows']
-        if not(selected_row is None):
-            rp_arn = selected_row['recovery_point_arn']         
-            # Create a button to call the API
-            if st.button('Migrate', key='api_button'):            
-                try:
-                    if EXEC_API_ENDPOINT:
-                        try:
-                            response = requests.get(EXEC_API_ENDPOINT, params={'dp': rp_arn})
-                            if response.status_code == 200:
-                                result = response.json()
-                                st.write(result)
-                            else:
-                                st.error(f"Error: {response.status_code} - {response.text}")
-                        except Exception as e:
-                            st.error(f"An error occurred: {str(e)}")                
-                except requests.RequestException as e:
-                    st.error(f"An error occurred while calling the API: {str(e)}")
-        else:
-            st.warning("Please select a row before calling the API.") 
-            
-def camel_case(s):
-    """Convert snake_case to camelCase."""
-    parts = s.split('_')
-    return parts[0] + ''.join(p.title() for p in parts[1:])
-
-def row_to_json_with_id(row):
-    """Convert a DataFrame row to a JSON object with camelCase keys, embedded in a root object with a unique ID."""
-    # Convert the row to a dictionary
-    row_dict = row.to_dict()
-    
-    # Create a new dictionary with camelCase keys
-    camel_dict = {camel_case(key): value for key, value in row_dict.items()}
-    
-    # Create the root object with a unique ID and embed the camel_dict
-    root_object = {
-        "id": str(uuid4()),  # Generate a unique ID
-        "data": camel_dict
-    }
-    
-    return json.dumps(root_object, default=str)
-
-
-
-# the layout Variables
-# st.set_page_config(page_title="Recuperer Dashboard", 
-#                    page_icon=logo,
-#                    layout="wide",
-#                    initial_sidebar_state="expanded",
-#                    )
+st.set_page_config(page_title="Recuperer Dashboard", 
+                   page_icon=logo,
+                   layout="wide",
+                   initial_sidebar_state="expanded",
+                   )
 
 hero = st.container()
 topRow = st.container()
@@ -244,6 +180,7 @@ with midRow:
     )
 
     selected_row = grid_response['selected_rows']
+    st.write(selected_row)
     if not(selected_row is None):
         resource_arn = selected_row['arn']
         st.session_state.resource_arn = resource_arn
