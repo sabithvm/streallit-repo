@@ -178,7 +178,6 @@ with midRow:
         allow_unsafe_jscode=True,
         theme='streamlit'
     )
-    st.write(grid_response)
     if not(grid_response['selected_rows'] is None):
         if len(grid_response['selected_rows'])>0:
             selected_row = grid_response['selected_rows'][0]
