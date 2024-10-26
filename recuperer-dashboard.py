@@ -1,33 +1,111 @@
+import os
+from datetime import datetime, date
+from urllib.parse import quote_plus
+
+import altair as alt
+import pandas as pd
+import json
+from uuid import uuid4
 import plotly.express as px
 import streamlit as st
-import pandas as pd
-from urllib.parse import quote_plus
-import altair as alt
-from datetime import datetime
-from datetime import date
 from PIL import Image
 from streamlit_dynamic_filters import DynamicFilters
-from sqlalchemy import create_engine
-import os
+import requests
+from st_aggrid import AgGrid, GridUpdateMode
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+from st_aggrid import AgGrid, GridUpdateMode, ColumnsAutoSizeMode
 
-# Database connection parameters
-DB_HOST = os.environ['DB_HOST']
-DB_NAME = os.environ['DB_NAME']
-DB_USER = os.environ['DB_USER']
-DB_PASS = os.environ['DB_PASS']
-DB_PORT = os.environ['DB_PORT']
+# Configuration and constants
+PAGE_TITLE = "Recuperer Dashboard"
+LOGO_PATH = 'resources/logo.jpg'
+LOGO_SIZE = (200, 100)
+
+logo = Image.open(LOGO_PATH)
+logo = logo.resize(LOGO_SIZE)
+
+BACKUP_QUERY = "SELECT * FROM aws_resource_backup_status"
+LINEAGE_QUERY = "SELECT * FROM aws_backup_vault_recovery_points_lineage"
+
+# Get the API endpoint from environment variable
+QUERY_API_ENDPOINT = os.environ.get('QUERY_API_ENDPOINT')
+QUERY_API_ENDPOINT = 'https://kxdb7ecp8f.execute-api.us-east-1.amazonaws.com/prod/query'
+
+EXEC_API_ENDPOINT = os.environ.get('EXEC_API_ENDPOINT')
+EXEC_API_ENDPOINT = 'https://kxdb7ecp8f.execute-api.us-east-1.amazonaws.com/prod/execute'
+
+if not QUERY_API_ENDPOINT:
+    st.error("QUERY_API_ENDPOINT environment variable is not set.")
+    st.stop()
+
+def display_lineage_data_frame(lineage_df):
+    with chartRow:
+
+        st.header("Recoverypoint Lineage")    
+        gb = GridOptionsBuilder.from_dataframe(lineage_df)
+        gb.configure_selection('single', use_checkbox=True, pre_selected_rows=[])
+        gb.configure_default_column(resizable=True, filterable=True, sorteable=True)
+        grid_options = gb.build()
+
+        grid_response = AgGrid(
+            lineage_df,
+            gridOptions=grid_options,
+            update_mode=GridUpdateMode.SELECTION_CHANGED,
+            columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
+            fit_columns_on_grid_load=True,
+            allow_unsafe_jscode=True,
+            theme='streamlit'
+        )
+
+        selected_row = grid_response['selected_rows']
+        if not(selected_row is None):
+            rp_arn = selected_row['recovery_point_arn']         
+            # Create a button to call the API
+            if st.button('Migrate', key='api_button'):            
+                try:
+                    if EXEC_API_ENDPOINT:
+                        try:
+                            response = requests.get(EXEC_API_ENDPOINT, params={'dp': rp_arn})
+                            if response.status_code == 200:
+                                result = response.json()
+                                st.write(result)
+                            else:
+                                st.error(f"Error: {response.status_code} - {response.text}")
+                        except Exception as e:
+                            st.error(f"An error occurred: {str(e)}")                
+                except requests.RequestException as e:
+                    st.error(f"An error occurred while calling the API: {str(e)}")
+        else:
+            st.warning("Please select a row before calling the API.") 
+            
+def camel_case(s):
+    """Convert snake_case to camelCase."""
+    parts = s.split('_')
+    return parts[0] + ''.join(p.title() for p in parts[1:])
+
+def row_to_json_with_id(row):
+    """Convert a DataFrame row to a JSON object with camelCase keys, embedded in a root object with a unique ID."""
+    # Convert the row to a dictionary
+    row_dict = row.to_dict()
+    
+    # Create a new dictionary with camelCase keys
+    camel_dict = {camel_case(key): value for key, value in row_dict.items()}
+    
+    # Create the root object with a unique ID and embed the camel_dict
+    root_object = {
+        "id": str(uuid4()),  # Generate a unique ID
+        "data": camel_dict
+    }
+    
+    return json.dumps(root_object, default=str)
 
 
 
-#Put your logo here:
-logo = Image.open('resources/logo.jpg')
-logo = logo.resize((200, 100))#and make it to whatever size you want.
 # the layout Variables
-st.set_page_config(page_title="Recuperer Dashboard", 
-                   page_icon=logo,
-                   layout="wide",
-                   initial_sidebar_state="expanded",
-                   )
+# st.set_page_config(page_title="Recuperer Dashboard", 
+#                    page_icon=logo,
+#                    layout="wide",
+#                    initial_sidebar_state="expanded",
+#                    )
 
 hero = st.container()
 topRow = st.container()
@@ -36,16 +114,18 @@ chartRow = st.container()
 footer = st.container()
 
 
-connection_string = f'postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
-infra_query = "SELECT * FROM aws_resources WHERE _cq_sync_time = (SELECT MAX(_cq_sync_time) FROM aws_resources) AND _cq_table LIKE 'aws_ec2_%%' and account_id not like 'aws%%' and region not like 'unavai%%'" 
-backup_query = "SELECT * FROM aws_resource_backup_status"
-engine = create_engine(connection_string)
-df = pd.read_sql(infra_query, engine)
-backup_df = pd.read_sql(backup_query, engine)
-dynamic_filters = DynamicFilters(df=backup_df, filters=['region', 'account_id', 'arn', '_cq_table'])
-
-
-
+backup_df = pd.DataFrame()
+if BACKUP_QUERY:
+    try:
+        response = requests.get(QUERY_API_ENDPOINT, params={'query': BACKUP_QUERY})
+        if response.status_code == 200:
+            result = response.json()
+            data = json.loads(result['data'])
+            backup_df = pd.json_normalize(data)
+        else:
+            st.error(f"Error: {response.status_code} - {response.text}")
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
 
 alt.themes.enable("dark")
 
@@ -97,76 +177,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Sidebar
-with st.sidebar:
-    st.markdown(f'''
-        <style>
-        section[data-testid="stSidebar"] {{
-                width: 500px;
-                background-color: #000b1a;
-                }}
-        section[data-testid="stSidebar"] h1 {{
-                color: #e3eefc;
-                }}
-        section[data-testid="stSidebar"] p {{
-                color: #ddd;
-                text-align: left;
-                }}
-        section[data-testid="stSidebar"] svg {{
-                fill: #ddd;
-                }}
-        </style>
-    ''',unsafe_allow_html=True)
-    st.title(":anchor: Recuperer")
-    st.markdown("Recovery Resilience Simplified.")
-
-    # aws_regions = df['region'].unique()
-    # region_selected = st.selectbox('AWS Region',['All'] + list(aws_regions),label_visibility="visible")
-
-    # aws_accounts = df['account_id'].unique()
-    # account_selected = st.selectbox('AWS Account',['All'] + list(aws_accounts),label_visibility="visible")    
-
-    # st.toast('Selected')
-
-    # rt_list = list(df['_cq_table'].unique())   
-    # # Allow user to select a specific resource type
-    # selected_type = st.selectbox('Resource Type', ['All'] + rt_list,label_visibility="visible")
-
-    # if region_selected != 'All':
-    #     filtered_df = df[df['region'] == selected_type]
-    # else:
-    #     filtered_df = df    
-
-    # if account_selected != 'All':
-    #     filtered_df = df[df['account_id'] == selected_type]
-    # else:
-    #     filtered_df = df    
-
-    # if selected_type != 'All':
-    #     filtered_df = df[df['_cq_table'] == selected_type]
-    # else:
-    #     filtered_df = df                    
-
-    # Customizing the select box
-    st.markdown(f'''
-    <style>
-        .stSelectbox div div {{
-                background-color: #fafafa;
-                color: #333;
-        }}
-        .stSelectbox div div:hover {{
-                cursor: pointer
-        }}
-        .stSelectbox div div .option {{
-                background-color: red;
-                color: #111;
-        }}
-        .stSelectbox div div svg {{
-                fill: black;
-        }}
-    </style>
-    ''', unsafe_allow_html=True)
-
 # The Hero Section
 with hero:
     # the logo
@@ -182,14 +192,14 @@ with hero:
 with topRow:
 
     # Calculate the total number of regions
-    total_regions = len(df['region'].unique())
+    total_regions = len(backup_df['region'].unique())
 
     # Calculate the total number of regions
-    total_accounts = len(df['account_id'].unique())
+    total_accounts = len(backup_df['account_id'].unique())
 
-    total_resource_tyes = len(df['_cq_table'].unique())
+    total_resource_tyes = len(backup_df['_cq_table'].unique())
 
-    total_resources = len(df['arn'].unique())
+    total_rps = len(backup_df['arn'].unique())
 
     # the result is 2:14 PM so I'll type it by hand for now.
     st.markdown(
@@ -206,39 +216,40 @@ with topRow:
                 <p>Total Resource Type(s)<br><span> %d </span></p>
             </div>
             <div class="stat">
-                <p>Total Resource(s)<br><span> %d </span></p>
+                <p>Total Recoverypoint(s)<br><span> %d </span></p>
             </div>            
         </div>
-        """ % (total_regions, total_accounts, total_resource_tyes,total_resources),
+        """ % (total_regions, total_accounts, total_resource_tyes,total_rps),
         unsafe_allow_html=True
     )
     
     
-# with midRow:
+with midRow:
 
-#     # Display summary
-#     st.header('Summary')
-#     st.write(backup_df)
+    st.header("Data Protection Coverage")    
+    gb = GridOptionsBuilder.from_dataframe(backup_df)
+    gb.configure_selection('single', use_checkbox=True, pre_selected_rows=[])
+    gb.configure_column("arn", editable=False)
+    gb.configure_default_column(resizable=True, filterable=True, sorteable=True)
+    grid_options = gb.build()
 
+    grid_response = AgGrid(
+        backup_df,
+        gridOptions=grid_options,
+        update_mode=GridUpdateMode.SELECTION_CHANGED,
+        columns_auto_size_mode=ColumnsAutoSizeMode.FIT_CONTENTS,
+        fit_columns_on_grid_load=True,
+        allow_unsafe_jscode=True,
+        theme='streamlit'
+    )
 
-with chartRow:
-
-    dynamic_filters.display_filters(location='sidebar')
-    dynamic_filters.display_df()
-
-#     # Display sample data
-#     st.subheader(f'Sample Data for {selected_type} Resource(s)')
-#     st.dataframe(filtered_df.head())
-
-#     # Additional visualizations based on the selected resource type
-#     if selected_type != 'All':
-#         st.subheader(f'Visualizations for {selected_type}')
-        
-#         # Example: Bar chart of resources by region
-#         region_counts = filtered_df['region'].value_counts()
-#         fig = px.bar(x=region_counts.index, y=region_counts.values, 
-#                         labels={'x': 'Region', 'y': 'Count'})
-#         st.plotly_chart(fig)
+    selected_row = grid_response['selected_rows']
+    if not(selected_row is None):
+        resource_arn = selected_row['arn']
+        st.session_state.resource_arn = resource_arn
+        st.switch_page("pages/recuperer-lineage.py")         
+    else:
+        st.warning("Please select a row before calling the API.")        
 
 
 with footer:
@@ -262,4 +273,3 @@ with footer:
         """, unsafe_allow_html=True
         )
     
-  
