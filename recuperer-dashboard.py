@@ -180,10 +180,11 @@ with midRow:
     )
     st.write(grid_response)
     if not(grid_response['selected_rows'] is None):
-        selected_row = grid_response['selected_rows'][0]
-        resource_arn = selected_row['arn']
-        st.session_state.resource_arn = resource_arn
-        st.switch_page("pages/recuperer-lineage.py")         
+        if len(grid_response['selected_rows'])>0:
+            selected_row = grid_response['selected_rows'][0]
+            resource_arn = selected_row['arn']
+            st.session_state.resource_arn = resource_arn
+            st.switch_page("pages/recuperer-lineage.py")         
     else:
         st.warning("Please select a row before calling the API.")        
 
