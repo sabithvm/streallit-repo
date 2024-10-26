@@ -180,7 +180,6 @@ with midRow:
     )
     if not(grid_response['selected_rows'] is None):
         selected_row = grid_response['selected_rows']
-        st.write(selected_row)
         resource_arn = selected_row['arn']
         st.session_state.resource_arn = resource_arn
         st.switch_page("pages/recuperer-lineage.py")         
