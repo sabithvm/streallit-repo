@@ -181,7 +181,7 @@ with midRow:
 
     selected_row = grid_response['selected_rows']
     st.write(selected_row)
-    if not(selected_row is None) and selected_row.get('arn'):
+    if not(selected_row is None) and len(selected_row)>0:
         resource_arn = selected_row['arn']
         st.session_state.resource_arn = resource_arn
         st.switch_page("pages/recuperer-lineage.py")         
