@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, date
 from urllib.parse import quote_plus
-
+import time
 import json
 from uuid import uuid4
 import plotly.express as px
@@ -13,10 +13,7 @@ from st_aggrid import AgGrid, GridUpdateMode
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 from st_aggrid import AgGrid, GridUpdateMode, ColumnsAutoSizeMode
 import altair as alt
-st.write(alt.__version__)
 import pandas as pd
-st.write(pd.__version__)
-
 # Configuration and constants
 PAGE_TITLE = "Recuperer Dashboard"
 LOGO_PATH = 'resources/logo.jpg'
@@ -181,14 +178,17 @@ with midRow:
         theme='streamlit'
     )
     if not(grid_response['selected_rows'] is None):
-        if len(grid_response['selected_rows'])>0:
-            selected_row = grid_response['selected_rows'][0]
-            resource_arn = selected_row['arn']
+        selected_row = grid_response['selected_rows']
+        resource_arn = selected_row['arn']
+        try:
+            with st.status("Fetching Recoverypoint Lineage...", expanded=True) as status:
+                time.sleep(2)
+                status.update(label="Recoverypoint Lineage Fetched!", state="complete", expanded=False)
+                time.sleep(2)
             st.session_state.resource_arn = resource_arn
-            st.switch_page("pages/recuperer-lineage.py")         
-    else:
-        st.warning("Please select a row before calling the API.")        
-
+            st.switch_page("pages/recuperer-lineage.py")            
+        except requests.RequestException as e:
+            st.error(f"An error occurred while calling the API: {str(e)}")
 
 with footer:
     st.markdown("---")
