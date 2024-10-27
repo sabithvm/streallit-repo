@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime, date
 from urllib.parse import quote_plus
 
@@ -21,7 +22,7 @@ LOGO_PATH = 'resources/logo.jpg'
 LOGO_SIZE = (200, 100)
 
 
-LINEAGE_QUERY = "SELECT account_id, region,  backup_vault_name, recovery_point_arn, resource_arn,completion_date, created_by, creation_date, encryption_key_arn, iam_role_arn, last_restore_time, lifecycle, calculated_lifecycle,parent_recovery_point_arn, resource_name, resource_type, source_backup_vault_arn, status, status_message, vault_type,tags, backup_vault_arn FROM aws_backup_vault_recovery_points_lineage"
+LINEAGE_QUERY = "SELECT account_id, region,  backup_vault_name, recovery_point_arn, resource_arn,completion_date, created_by, creation_date, encryption_key_arn, iam_role_arn, last_restore_time, lifecycle, calculated_lifecycle,parent_recovery_point_arn, resource_name, resource_type, source_backup_vault_arn, status, status_message, vault_type,tags, backup_vault_arn,_cq_source_name,_cq_table FROM aws_backup_vault_recovery_points_lineage"
 
 # Get the API endpoint from environment variable
 QUERY_API_ENDPOINT = os.environ.get('QUERY_API_ENDPOINT')
@@ -41,7 +42,7 @@ def camel_case(s):
 def row_to_json_with_id(row):
     """Convert a DataFrame row to a JSON object with CamelCase keys, embedded in a root object with a unique ID."""
     camel_dict = {camel_case(key): value.iloc[0] if isinstance(value, pd.Series) else value 
-                  for key, value in row.items() if key != 'index'}
+                  for key, value in row.items() if key != 'index' and not key.startswith('_cq')}
     
     # Create the root object with a unique ID and embed the camel_dict
     root_object = {
@@ -72,15 +73,15 @@ def display_lineage_data_frame(lineage_df):
 
         selected_row = grid_response['selected_rows']
         if not(selected_row is None):
-            # Create a button to call the API
-            if st.button('Migrate', key='api_button'):            
-                try:
-                    row_json=row_to_json_with_id(selected_row)
-                    st.json(row_json,expanded=2)                    
-                except requests.RequestException as e:
-                    st.error(f"An error occurred while calling the API: {str(e)}")
-        else:
-            st.warning("Please select a row before calling the API.") 
+            with st.status("Fetching resource details...", expanded=True) as status:
+                time.sleep(2)
+                status.update(label="Resource details fetched!", state="complete", expanded=False)
+                time.sleep(2)            
+            resource_arn = selected_row.iloc[0]['resource_arn']
+            table_name = selected_row.iloc[0]['_cq_table']
+            st.session_state.resource_arn = resource_arn
+            st.session_state.table_name = table_name
+            st.switch_page("pages/recuperer-migration.py")
             
 
 logo = Image.open('resources/logo.jpg')
