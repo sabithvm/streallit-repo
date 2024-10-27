@@ -2,8 +2,6 @@ import os
 from datetime import datetime, date
 from urllib.parse import quote_plus
 
-import altair as alt
-import pandas as pd
 import json
 from uuid import uuid4
 import plotly.express as px
@@ -14,6 +12,10 @@ import requests
 from st_aggrid import AgGrid, GridUpdateMode
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 from st_aggrid import AgGrid, GridUpdateMode, ColumnsAutoSizeMode
+import altair as alt
+st.write(alt.__version__)
+import pandas as pd
+st.write(pd.__version__)
 
 # Configuration and constants
 PAGE_TITLE = "Recuperer Dashboard"
